@@ -17,7 +17,7 @@
 ### ACL (Access Control List)
 - 支持用户名/密码认证
 - 与传统的密码认证兼容
-- 命令行参数: `-u <username> --acl-pass <password>`
+- 命令行参数: `--user <username> --pass <password>`
 - **Redis URI支持**: `--uri "redis://username:password@host:port/db"`
 
 ### TLS (Transport Layer Security)

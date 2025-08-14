@@ -10,6 +10,7 @@
 - 🌐 **Redis URI支持**: 标准化的连接字符串配置
 - 🏗️ **多模式支持**: 单机、集群、哨兵模式
 - 📊 **全面测试**: 支持所有Redis数据类型的基准测试
+- 🏗️ **自定义淘汰时间**: 支持自定义所有类型压测数据TTL
 - 🐳 **Docker支持**: 提供完整的容器化部署方案
 
 ## Redis 6.0+ 新特性支持
@@ -78,26 +79,26 @@ make clean
 #### 基本用法
 - 通过Go直接运行 (跨平台):
 ```bash
-go run cmd/redis-benchmark/main.go --read-all -n 100000 -c 200 -P 50
+go run cmd/redis-benchmark/main.go --read-all -n 100000 -c 200 -P 50 --ttl 30s
 ```
 
 - 运行构建后的二进制文件 (Windows):
 ```powershell
-./go-redisbenchmark.exe --read-all -n 100000 -c 200 -P 50
+./go-redisbenchmark.exe --read-all -n 100000 -c 200 -P 50 --ttl 30s
 ```
 
 - 运行构建后的二进制文件 (Linux/macOS):
 ```bash
-./go-redisbenchmark --read-all -n 100000 -c 200 -P 50
+./go-redisbenchmark --read-all -n 100000 -c 200 -P 50 --ttl 30s
 ```
 
 #### 使用ACL和TLS
 ```bash
 # 使用ACL用户
-./go-redisbenchmark --user benchmark --pass mypassword -n 10000 -c 10
+./go-redisbenchmark --user benchmark --pass mypassword -n 10000 -c 10 --ttl 30s
 
 # 使用TLS连接
-./go-redisbenchmark --tls --tls-ca certs/ca.crt -n 10000
+./go-redisbenchmark --tls --tls-ca certs/ca.crt -n 10000 --ttl 30s
 
 # 组合使用ACL和TLS
 ./go-redisbenchmark \
@@ -108,19 +109,21 @@ go run cmd/redis-benchmark/main.go --read-all -n 100000 -c 200 -P 50
   --user benchmark \
   --pass mypassword \
   -n 100000 \
-  -c 50
+  -c 50  \
+  --ttl 30s
 
 # 使用Redis URI（推荐方式）
-./go-redisbenchmark --uri "redis://benchmark:mypassword@127.0.0.1:6379/0" -n 10000
+./go-redisbenchmark --uri "redis://benchmark:mypassword@127.0.0.1:6379/0" -n 10000 --ttl 30s
 
 # 使用Redis URI + TLS
-./go-redisbenchmark --uri "rediss://benchmark:mypassword@127.0.0.1:6380/0" -n 10000
+./go-redisbenchmark --uri "rediss://benchmark:mypassword@127.0.0.1:6380/0" -n 10000 --ttl 30s
 
 # 使用Redis URI完整配置
 ./go-redisbenchmark \
   --uri "redis://benchmark:mypassword@127.0.0.1:6380/0?tls=true&tls-cert=certs/client.crt&tls-key=certs/client.key&tls-ca=certs/ca.crt" \
   -n 100000 \
-  -c 50
+  -c 50 \
+  --ttl 30s
 ```
 
 ### 开发模式

@@ -77,6 +77,9 @@ func main() {
 
 		// shortcuts
 		readAll          = flag.Bool("read-all", false, "Run a suite of read commands across all data types")
+		
+		// data lifecycle
+		ttl              = flag.Duration("ttl", time.Hour, "TTL for benchmark data (e.g., 1h, 30m, 2h)")
 	)
 
 	flag.Parse()
@@ -97,6 +100,9 @@ func main() {
 		fmt.Println("\nRedis URI:")
 		fmt.Println("  --uri <uri>           Redis connection URI")
 		fmt.Println("                         Example: redis://user:pass@host:port/db")
+		fmt.Println("\nData Lifecycle:")
+		fmt.Println("  --ttl <duration>      TTL for benchmark data (default: 1m)")
+		fmt.Println("                         Examples: 1h, 30m, 2h, 3600s")
 		fmt.Println("\nRun with --help for full options list")
 		os.Exit(0)
 	}
@@ -173,6 +179,7 @@ func main() {
 		GeoMembers:      *geoMembers,
 		StreamLen:       *streamLen,
 		RangeCount:      *rangeCount,
+		TTL:             *ttl,
 	}
 
 	r, err := benchmark.NewRunner(opts)

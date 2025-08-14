@@ -91,6 +91,9 @@ type Options struct {
 	GeoMembers     int // members per geo set
 	StreamLen      int // entries per stream
 	RangeCount     int // count for range reads (LRANGE/ZRANGE/XRANGE)
+	
+	// Data lifecycle management
+	TTL            time.Duration // TTL for benchmark data (default: 1 hour)
 }
 
 // Result contains aggregated metrics for a single test.
@@ -143,6 +146,8 @@ func NewRunner(opts Options) (*Runner, error) {
 	if opts.GeoMembers <= 0 { opts.GeoMembers = 10 }
 	if opts.StreamLen <= 0 { opts.StreamLen = 10 }
 	if opts.RangeCount <= 0 { opts.RangeCount = 10 }
+	// Set default TTL to 1 hour if not specified
+	if opts.TTL <= 0 { opts.TTL = time.Minute }
 	return &Runner{opts: opts}, nil
 }
 
@@ -392,8 +397,10 @@ func (r *Runner) prefillStrings(ctx context.Context, client redis.UniversalClien
 	payload := randomString(max(1, r.opts.DataSize))
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
-		pipe.Set(ctx, r.keyS(i), payload, 0)
+		pipe.Set(ctx, r.keyS(i), payload, ttl)
 		count++
 		if count >= 256 {
 			if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }
@@ -409,6 +416,8 @@ func (r *Runner) prefillStrings(ctx context.Context, client redis.UniversalClien
 func (r *Runner) prefillHashes(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyH(i)
 		for f := 0; f < r.opts.HashFields; f++ {
@@ -416,6 +425,8 @@ func (r *Runner) prefillHashes(ctx context.Context, client redis.UniversalClient
 			count++
 			if count >= 512 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the hash key after all fields are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -424,6 +435,8 @@ func (r *Runner) prefillHashes(ctx context.Context, client redis.UniversalClient
 func (r *Runner) prefillLists(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyL(i)
 		for j := 0; j < r.opts.ListLen; j++ {
@@ -431,6 +444,8 @@ func (r *Runner) prefillLists(ctx context.Context, client redis.UniversalClient)
 			count++
 			if count >= 512 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the list key after all elements are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -439,6 +454,8 @@ func (r *Runner) prefillLists(ctx context.Context, client redis.UniversalClient)
 func (r *Runner) prefillSets(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keySet(i)
 		for j := 0; j < r.opts.SetCardinality; j++ {
@@ -446,6 +463,8 @@ func (r *Runner) prefillSets(ctx context.Context, client redis.UniversalClient) 
 			count++
 			if count >= 512 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the set key after all members are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -454,6 +473,8 @@ func (r *Runner) prefillSets(ctx context.Context, client redis.UniversalClient) 
 func (r *Runner) prefillZSets(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyZ(i)
 		for j := 0; j < r.opts.ZSetCardinality; j++ {
@@ -461,6 +482,8 @@ func (r *Runner) prefillZSets(ctx context.Context, client redis.UniversalClient)
 			count++
 			if count >= 256 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the zset key after all members are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -469,6 +492,8 @@ func (r *Runner) prefillZSets(ctx context.Context, client redis.UniversalClient)
 func (r *Runner) prefillBitmaps(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyB(i)
 		for bit := 0; bit < r.opts.BitmapSizeBits; bit += 3 {
@@ -476,6 +501,8 @@ func (r *Runner) prefillBitmaps(ctx context.Context, client redis.UniversalClien
 			count++
 			if count >= 1024 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the bitmap key after all bits are set
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -484,6 +511,8 @@ func (r *Runner) prefillBitmaps(ctx context.Context, client redis.UniversalClien
 func (r *Runner) prefillHLL(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyPF(i)
 		for j := 0; j < 64; j++ {
@@ -491,6 +520,8 @@ func (r *Runner) prefillHLL(ctx context.Context, client redis.UniversalClient) e
 			count++
 			if count >= 512 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the hyperloglog key after all members are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -499,6 +530,8 @@ func (r *Runner) prefillHLL(ctx context.Context, client redis.UniversalClient) e
 func (r *Runner) prefillGeo(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyG(i)
 		for j := 0; j < r.opts.GeoMembers; j++ {
@@ -508,6 +541,8 @@ func (r *Runner) prefillGeo(ctx context.Context, client redis.UniversalClient) e
 			count++
 			if count >= 256 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the geo key after all members are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -516,6 +551,8 @@ func (r *Runner) prefillGeo(ctx context.Context, client redis.UniversalClient) e
 func (r *Runner) prefillStreams(ctx context.Context, client redis.UniversalClient) error {
 	pipe := client.Pipeline()
 	count := 0
+	// Use configured TTL for data cleanup
+	ttl := r.opts.TTL
 	for i := 0; i < r.opts.Keyspace; i++ {
 		key := r.keyX(i)
 		for j := 0; j < r.opts.StreamLen; j++ {
@@ -523,6 +560,8 @@ func (r *Runner) prefillStreams(ctx context.Context, client redis.UniversalClien
 			count++
 			if count >= 256 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err }; pipe = client.Pipeline(); count = 0 }
 		}
+		// Set TTL for the stream key after all entries are added
+		pipe.Expire(ctx, key, ttl)
 	}
 	if count > 0 { if _, err := pipe.Exec(ctx); err != nil && !isNilErr(err) { return err } }
 	return nil
@@ -688,7 +727,14 @@ func (r *Runner) execOne(ctx context.Context, client redis.UniversalClient, test
 		// Fallback basic write tests to keep compatibility
 		switch test {
 		case "SET":
-			return client.Set(ctx, r.pickKeyS(), payload, 0).Err()
+			// Use configured TTL for SET operations to ensure cleanup
+			key := r.pickKeyS()
+			// First set the value without TTL
+			if err := client.Set(ctx, key, payload, 0).Err(); err != nil {
+				return err
+			}
+			// Then set TTL using EXPIRE command
+			return client.Expire(ctx, key, r.opts.TTL).Err()
 		case "GETSET":
 			_, _ = client.GetSet(ctx, r.pickKeyS(), payload).Result(); return nil
 		}
@@ -742,7 +788,25 @@ func (r *Runner) execPipeline(ctx context.Context, client redis.UniversalClient,
 	default:
 		switch test {
 		case "SET":
-			for i := 0; i < n; i++ { pipe.Set(ctx, r.pickKeyS(), payload, 0) }
+			// Use configured TTL for SET operations to ensure cleanup
+			// Debug: print TTL value to verify it's being set correctly
+			if n == 1 {
+				fmt.Printf("DEBUG: Setting TTL to %v for SET operations\n", r.opts.TTL)
+			}
+			// For pipeline mode, we need to use a different approach
+			// Since we can't mix pipeline and individual commands, we'll execute individually
+			for i := 0; i < n; i++ { 
+				key := r.pickKeyS()
+				// First set the value without TTL
+				if err := client.Set(ctx, key, payload, 0).Err(); err != nil {
+					return err
+				}
+				// Then set TTL using EXPIRE command
+				if err := client.Expire(ctx, key, r.opts.TTL).Err(); err != nil {
+					return err
+				}
+			}
+			return nil // Return early since we're not using pipeline for this test
 		case "GETSET":
 			for i := 0; i < n; i++ { pipe.GetSet(ctx, r.pickKeyS(), payload) }
 		default:

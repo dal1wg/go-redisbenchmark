@@ -1,0 +1,20 @@
+# Redis 6.0+ ACL用户配置文件示例
+# 格式: user <username> [acl rules...]
+
+# 管理员用户 - 拥有所有权限
+user admin on #password ~* &* +@all
+
+# 只读用户 - 只能读取数据，不能修改
+user readonly on #password ~* &* +@read
+
+# 写入用户 - 可以读写数据，但不能执行危险命令
+user writer on #password ~* &* +@read +@write -@dangerous
+
+# 应用用户 - 特定应用使用的用户，有限权限
+user app1 on #password ~app1:* &* +@read +@write -@admin -@dangerous
+
+# 测试用户 - 用于基准测试
+user benchmark on #password ~benchmark:* &* +@read +@write -@admin -@dangerous
+
+# 禁用默认用户
+user default off 

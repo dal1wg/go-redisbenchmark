@@ -17,12 +17,26 @@ func main() {
 	var (
 		modeStr          = flag.String("mode", string(benchmark.ModeStandalone), "mode: standalone|cluster|sentinel")
 
+		// Connection
+		uri              = flag.String("uri", "", "Redis URI (e.g., redis://username:password@host:port/db?tls=true)")
+
 		// common/standalone
 		host             = flag.String("h", "127.0.0.1", "Server hostname")
 		port             = flag.Int("p", 6379, "Server port")
 		addr             = flag.String("addr", "", "Server address host:port (overrides -h and -p)")
 		password         = flag.String("a", "", "Password to use when connecting to the server")
 		db               = flag.Int("db", 0, "Database number")
+
+		// ACL support (Redis 6.0+)
+		username         = flag.String("u", "", "ACL username for Redis 6.0+")
+		aclPassword      = flag.String("acl-pass", "", "ACL password for Redis 6.0+ (separate from legacy password)")
+
+		// TLS support (Redis 6.0+)
+		useTLS           = flag.Bool("tls", false, "Enable TLS connection")
+		tlsCertFile      = flag.String("tls-cert", "", "Client certificate file path")
+		tlsKeyFile       = flag.String("tls-key", "", "Client private key file path")
+		tlsCAFile        = flag.String("tls-ca", "", "CA certificate file path")
+		tlsInsecure      = flag.Bool("tls-insecure", false, "Skip TLS certificate verification")
 
 		// cluster
 		clusterAddrsStr = flag.String("cluster-addrs", "", "Cluster startup nodes, comma-separated host:port list")
@@ -98,9 +112,17 @@ func main() {
 
 	opts := benchmark.Options{
 		Mode:           benchmark.Mode(strings.ToLower(strings.TrimSpace(*modeStr))),
+		URI:            *uri,
 		Addr:           finalAddr,
 		DB:             *db,
 		Password:       *password,
+		Username:       *username,
+		ACLPassword:    *aclPassword,
+		UseTLS:         *useTLS,
+		TLSCertFile:    *tlsCertFile,
+		TLSKeyFile:     *tlsKeyFile,
+		TLSCAFile:      *tlsCAFile,
+		TLSInsecure:    *tlsInsecure,
 		ClusterAddrs:   clusterAddrs,
 		SentinelAddrs:  sentinelAddrs,
 		SentinelMaster: *sentinelMaster,

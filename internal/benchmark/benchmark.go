@@ -2,11 +2,15 @@ package benchmark
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"math"
 	"math/rand"
+	"net/url"
 	"os"
+	"strconv"
 	"sort"
 	"strings"
 	"sync"
@@ -30,12 +34,26 @@ const (
 type Options struct {
 	Mode           Mode
 
+	// Connection
+	URI            string // Redis URI (e.g., redis://username:password@host:port/db?tls=true)
+
 	// Standalone
 	Addr           string // host:port
 	DB             int
 
 	// Shared
 	Password       string
+
+	// ACL support (Redis 6.0+)
+	Username       string // ACL username
+	ACLPassword    string // ACL password (separate from legacy password)
+
+	// TLS support (Redis 6.0+)
+	UseTLS         bool   // Enable TLS connection
+	TLSCertFile    string // Client certificate file path
+	TLSKeyFile     string // Client private key file path
+	TLSCAFile      string // CA certificate file path
+	TLSInsecure   bool   // Skip TLS certificate verification
 
 	// Cluster
 	ClusterAddrs   []string // host:port list
@@ -118,37 +136,114 @@ func NewRunner(opts Options) (*Runner, error) {
 	return &Runner{opts: opts}, nil
 }
 
-// Run executes all tests sequentially and returns results.
-func (r *Runner) Run(ctx context.Context) ([]Result, error) {
-	results := make([]Result, 0, len(r.opts.Tests))
+// ParseRedisURI parses a Redis URI and returns connection parameters
+// Supported formats:
+// - redis://username:password@host:port/db?tls=true
+// - rediss://username:password@host:port/db (TLS by default)
+// - redis://host:port/db
+// - redis://host:port
+func (r *Runner) ParseRedisURI(uri string) error {
+	if uri == "" {
+		return nil
+	}
 
-	client, err := r.buildClient()
+	parsedURL, err := url.Parse(uri)
 	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = client.Close() }()
-
-	// Pre-fill dataset for all non-PING tests
-	if err := r.prefillAll(ctx, client); err != nil {
-		return nil, fmt.Errorf("prefill error: %w", err)
+		return fmt.Errorf("invalid Redis URI: %w", err)
 	}
 
-	for _, t := range r.opts.Tests {
-		res, err := r.runSingleTest(ctx, client, strings.ToUpper(strings.TrimSpace(t)))
-		if err != nil {
-			return results, err
+	// Check scheme
+	if parsedURL.Scheme != "redis" && parsedURL.Scheme != "rediss" {
+		return fmt.Errorf("unsupported scheme: %s (only redis:// and rediss:// are supported)", parsedURL.Scheme)
+	}
+
+	// Set TLS if scheme is rediss://
+	if parsedURL.Scheme == "rediss" {
+		r.opts.UseTLS = true
+	}
+
+	// Parse host and port
+	if parsedURL.Host != "" {
+		r.opts.Addr = parsedURL.Host
+	}
+
+	// Parse username and password
+	if parsedURL.User != nil {
+		r.opts.Username = parsedURL.User.Username()
+		if password, ok := parsedURL.User.Password(); ok {
+			r.opts.ACLPassword = password
 		}
-		results = append(results, res)
 	}
-	return results, nil
+
+	// Parse database number
+	if parsedURL.Path != "" && parsedURL.Path != "/" {
+		dbStr := strings.TrimPrefix(parsedURL.Path, "/")
+		if dbStr != "" {
+			db, err := strconv.Atoi(dbStr)
+			if err != nil {
+				return fmt.Errorf("invalid database number in URI: %s", dbStr)
+			}
+			r.opts.DB = db
+		}
+	}
+
+	// Parse query parameters
+	query := parsedURL.Query()
+	
+	// Parse TLS parameters
+	if query.Get("tls") == "true" || r.opts.UseTLS {
+		r.opts.UseTLS = true
+	}
+	
+	if certFile := query.Get("tls-cert"); certFile != "" {
+		r.opts.TLSCertFile = certFile
+	}
+	
+	if keyFile := query.Get("tls-key"); keyFile != "" {
+		r.opts.TLSKeyFile = keyFile
+	}
+	
+	if caFile := query.Get("tls-ca"); caFile != "" {
+		r.opts.TLSCAFile = caFile
+	}
+	
+	if query.Get("tls-insecure") == "true" {
+		r.opts.TLSInsecure = true
+	}
+
+	return nil
 }
 
 func (r *Runner) buildClient() (redis.UniversalClient, error) {
+	// Parse Redis URI if provided
+	if err := r.ParseRedisURI(r.opts.URI); err != nil {
+		return nil, fmt.Errorf("failed to parse Redis URI: %w", err)
+	}
+
 	// Use UniversalClient to support standalone/cluster/sentinel via a single config.
 	opts := &redis.UniversalOptions{
 		DB:       r.opts.DB,
 		Password: r.opts.Password,
 	}
+
+	// ACL support (Redis 6.0+)
+	if r.opts.Username != "" {
+		opts.Username = r.opts.Username
+		// If ACL password is specified, use it; otherwise fall back to legacy password
+		if r.opts.ACLPassword != "" {
+			opts.Password = r.opts.ACLPassword
+		}
+	}
+
+	// TLS support (Redis 6.0+)
+	if r.opts.UseTLS {
+		tlsConfig, err := r.buildTLSConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build TLS config: %w", err)
+		}
+		opts.TLSConfig = tlsConfig
+	}
+
 	switch r.opts.Mode {
 	case ModeStandalone:
 		if r.opts.Addr == "" {
@@ -176,6 +271,43 @@ func (r *Runner) buildClient() (redis.UniversalClient, error) {
 		return nil, fmt.Errorf("unknown mode: %s", r.opts.Mode)
 	}
 	return redis.NewUniversalClient(opts), nil
+}
+
+// buildTLSConfig creates a TLS configuration for Redis connections
+func (r *Runner) buildTLSConfig() (*tls.Config, error) {
+	config := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	// Load client certificate and key if provided
+	if r.opts.TLSCertFile != "" && r.opts.TLSKeyFile != "" {
+		cert, err := tls.LoadX509KeyPair(r.opts.TLSCertFile, r.opts.TLSKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load client certificate: %w", err)
+		}
+		config.Certificates = []tls.Certificate{cert}
+	}
+
+	// Load CA certificate if provided
+	if r.opts.TLSCAFile != "" {
+		caCert, err := os.ReadFile(r.opts.TLSCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, errors.New("failed to append CA certificate to pool")
+		}
+		config.RootCAs = caCertPool
+	}
+
+	// Set insecure skip verify if requested
+	if r.opts.TLSInsecure {
+		config.InsecureSkipVerify = true
+	}
+
+	return config, nil
 }
 
 // prefillAll creates datasets for reads across Redis types so read tests hit existing data.

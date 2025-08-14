@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+# go-redisbenchmark - A high performance Redis benchmark tool written in Go.
+# Supports Redis 6.0+ features including ACL and TLS.
+#
+# Copyright (c) 2025, dal1wg <15072697283@139.com>
+# All rights reserved.
+#
+# This source code is licensed under the BSD 3-Clause License.
+#
 
 # 生成TLS证书脚本
 # 用于Redis 6.0+ TLS测试

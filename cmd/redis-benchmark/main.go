@@ -38,8 +38,8 @@ func main() {
 		db               = flag.Int("db", 0, "Database number")
 
 		// ACL support (Redis 6.0+)
-		username         = flag.String("u", "", "ACL username for Redis 6.0+")
-		aclPassword      = flag.String("acl-pass", "", "ACL password for Redis 6.0+ (separate from legacy password)")
+		username         = flag.String("user", "", "ACL username for Redis 6.0+")
+		aclPassword      = flag.String("pass", "", "ACL password for Redis 6.0+ (separate from legacy password)")
 
 		// TLS support (Redis 6.0+)
 		useTLS           = flag.Bool("tls", false, "Enable TLS connection")
@@ -80,6 +80,26 @@ func main() {
 	)
 
 	flag.Parse()
+
+	// Show help if requested
+	if len(os.Args) == 1 || (len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help")) {
+		fmt.Println("go-redisbenchmark - A high performance Redis benchmark tool")
+		fmt.Println("\nUsage:")
+		fmt.Println("  ./go-redisbenchmark [options]")
+		fmt.Println("\nACL Authentication:")
+		fmt.Println("  --user <username>     ACL username for Redis 6.0+")
+		fmt.Println("  --pass <password>     ACL password for Redis 6.0+")
+		fmt.Println("\nTLS Options:")
+		fmt.Println("  --tls                 Enable TLS connection")
+		fmt.Println("  --tls-cert <file>     Client certificate file")
+		fmt.Println("  --tls-key <file>      Client private key file")
+		fmt.Println("  --tls-ca <file>       CA certificate file")
+		fmt.Println("\nRedis URI:")
+		fmt.Println("  --uri <uri>           Redis connection URI")
+		fmt.Println("                         Example: redis://user:pass@host:port/db")
+		fmt.Println("\nRun with --help for full options list")
+		os.Exit(0)
+	}
 
 	// context with cancel on Ctrl+C
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

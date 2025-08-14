@@ -45,7 +45,7 @@ go run cmd/redis-benchmark/main.go -n 1000 -c 1
 ### 测试ACL认证
 ```bash
 # 使用ACL用户进行基准测试
-go run cmd/redis-benchmark/main.go -u benchmark --acl-pass mypassword -n 1000 -c 1
+go run cmd/redis-benchmark/main.go --user benchmark --pass mypassword -n 1000 -c 1
 
 # 使用Redis URI进行ACL认证（推荐）
 go run cmd/redis-benchmark/main.go --uri "redis://benchmark:mypassword@127.0.0.1:6379/0" -n 1000 -c 1
@@ -68,8 +68,8 @@ go run cmd/redis-benchmark/main.go \
   --tls-cert certs/client.crt \
   --tls-key certs/client.key \
   --tls-ca certs/ca.crt \
-  -u benchmark \
-  --acl-pass mypassword \
+  --user benchmark \
+  --pass mypassword \
   -n 1000 \
   -c 1
 

@@ -224,6 +224,31 @@ func (r *Runner) ParseRedisURI(uri string) error {
 	return nil
 }
 
+// Run executes all tests sequentially and returns results.
+func (r *Runner) Run(ctx context.Context) ([]Result, error) {
+	results := make([]Result, 0, len(r.opts.Tests))
+
+	client, err := r.buildClient()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = client.Close() }()
+
+	// Pre-fill dataset for all non-PING tests
+	if err := r.prefillAll(ctx, client); err != nil {
+		return nil, fmt.Errorf("prefill error: %w", err)
+	}
+
+	for _, t := range r.opts.Tests {
+		res, err := r.runSingleTest(ctx, client, strings.ToUpper(strings.TrimSpace(t)))
+		if err != nil {
+			return results, err
+		}
+		results = append(results, res)
+	}
+	return results, nil
+}
+
 func (r *Runner) buildClient() (redis.UniversalClient, error) {
 	// Parse Redis URI if provided
 	if err := r.ParseRedisURI(r.opts.URI); err != nil {
@@ -243,6 +268,8 @@ func (r *Runner) buildClient() (redis.UniversalClient, error) {
 		if r.opts.ACLPassword != "" {
 			opts.Password = r.opts.ACLPassword
 		}
+		// Debug: print ACL credentials
+		fmt.Printf("Using ACL authentication - Username: %s, Password: %s\n", r.opts.Username, strings.Repeat("*", len(r.opts.ACLPassword)))
 	}
 
 	// TLS support (Redis 6.0+)

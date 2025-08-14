@@ -10,8 +10,8 @@ Redis 6.0+ 引入了基于用户的访问控制，允许为不同用户分配不
 
 ```bash
 # 使用ACL用户名和密码
--u <username>          # ACL用户名
---acl-pass <password>  # ACL密码（与传统的-a参数分开）
+--user <username>          # ACL用户名
+--pass <password>          # ACL密码（与传统的-a参数分开）
 
 # 使用Redis URI（推荐）
 --uri <redis-uri>      # Redis连接URI，支持ACL和TLS配置
@@ -58,10 +58,10 @@ redis://username:password@host:port/db?tls=true&tls-insecure=true
 
 ```bash
 # 使用ACL用户进行基准测试
-./go-redisbenchmark -u benchmark --acl-pass mypassword -n 10000 -c 10
+./go-redisbenchmark --user benchmark --pass mypassword -n 10000 -c 10
 
 # 使用ACL用户连接集群
-./go-redisbenchmark -mode cluster -u app1 --acl-pass apppass -cluster-addrs "127.0.0.1:7000,127.0.0.1:7001"
+./go-redisbenchmark -mode cluster --user app1 --pass apppass -cluster-addrs "127.0.0.1:7000,127.0.0.1:7001"
 ```
 
 ### ACL配置示例

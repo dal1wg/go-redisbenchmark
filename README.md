@@ -94,7 +94,7 @@ go run cmd/redis-benchmark/main.go --read-all -n 100000 -c 200 -P 50
 #### 使用ACL和TLS
 ```bash
 # 使用ACL用户
-./go-redisbenchmark -u benchmark --acl-pass mypassword -n 10000 -c 10
+./go-redisbenchmark --user benchmark --pass mypassword -n 10000 -c 10
 
 # 使用TLS连接
 ./go-redisbenchmark --tls --tls-ca certs/ca.crt -n 10000
@@ -105,8 +105,8 @@ go run cmd/redis-benchmark/main.go --read-all -n 100000 -c 200 -P 50
   --tls-cert certs/client.crt \
   --tls-key certs/client.key \
   --tls-ca certs/ca.crt \
-  -u benchmark \
-  --acl-pass mypassword \
+  --user benchmark \
+  --pass mypassword \
   -n 100000 \
   -c 50
 

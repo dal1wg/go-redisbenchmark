@@ -45,7 +45,7 @@ Redis URI遵循标准格式：`scheme://[username:password@]host:port[/db][?quer
 ./go-redisbenchmark --uri "redis://benchmark:mypassword@127.0.0.1:6379/0" -n 10000
 
 # 等价于
-./go-redisbenchmark -u benchmark --acl-pass mypassword -n 10000
+./go-redisbenchmark --user benchmark --pass mypassword -n 10000
 ```
 
 ### 4. 不同ACL用户

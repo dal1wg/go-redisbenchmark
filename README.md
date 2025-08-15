@@ -17,16 +17,17 @@
 ## 快速开始
 
 支持以下操作系统
-- Kylin Linux Advanced Server V10
-- UOS Server v20 (a / e)
-- openEuler 20.03 / 22.03 / 24.03
-- RedHat Enterprise Linux 5.x / 6.x / 7.x / 8.x / 9.x / 10.x
-- CentOS 5 / 6 / 7 / 8 / 8-Stream / 9-Stream / 10-Stream
-- Ubuntu 20.04 / 22.04 / 24.04
-- Debian 10 / 11 / 12 / 13
-- SUSE Linux Enterprise Server 11 / 12 / 15
-- openSUSE 11.x / 12.x / 13.x / 42.x / 15.x / tumbleweed
-- Alpine 3.x / edge
+- _Kylin Linux Advanced Server V10_
+- _Kylin Linux Advanced Server V10_
+- _UOS Server v20 (a / e)_
+- _openEuler 20.03 / 22.03 / 24.03_
+- _RedHat Enterprise Linux 5.x / 6.x / 7.x / 8.x / 9.x / 10.x_
+- _CentOS 5 / 6 / 7 / 8 / 8-Stream / 9-Stream / 10-Stream_
+- _Ubuntu 20.04 / 22.04 / 24.04_
+- _Debian 10 / 11 / 12 / 13_
+- _SUSE Linux Enterprise Server 11 / 12 / 15_
+- _openSUSE 11.x / 12.x / 13.x / 42.x / 15.x / tumbleweed_
+- _Alpine 3.x / edge_
 
 ### 构建
 

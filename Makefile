@@ -75,12 +75,17 @@ dist:
 
 build-all: dist
 	@echo "Building cross-platform binaries into dist/ ..."
+	@echo "Building Windows binaries..."
 	@GOOS=windows GOARCH=amd64 go build -o dist/go-redisbenchmark-windows-amd64.exe cmd/redis-benchmark/main.go
 	@GOOS=windows GOARCH=arm64 go build -o dist/go-redisbenchmark-windows-arm64.exe cmd/redis-benchmark/main.go
-	@GOOS=linux GOARCH=amd64 go build -o dist/go-redisbenchmark-linux-amd64 cmd/redis-benchmark/main.go
-	@GOOS=linux GOARCH=arm64 go build -o dist/go-redisbenchmark-linux-arm64 cmd/redis-benchmark/main.go
+	@echo "Building Linux binaries (statically linked for old GLIBC compatibility)..."
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -extldflags=-static" -o dist/go-redisbenchmark-linux-amd64 cmd/redis-benchmark/main.go
+	@CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -extldflags=-static" -o dist/go-redisbenchmark-linux-arm64 cmd/redis-benchmark/main.go
+	@echo "Building macOS binaries..."
 	@GOOS=darwin GOARCH=amd64 go build -o dist/go-redisbenchmark-darwin-amd64 cmd/redis-benchmark/main.go
 	@GOOS=darwin GOARCH=arm64 go build -o dist/go-redisbenchmark-darwin-arm64 cmd/redis-benchmark/main.go
+	@echo "All binaries built successfully!"
+	@echo "Linux binaries are statically linked for maximum compatibility with old systems."
 
 # Clean the binary
 clean:

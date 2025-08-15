@@ -48,8 +48,7 @@ func main() {
 		tlsCAFile        = flag.String("tls-ca", "", "CA certificate file path")
 		tlsInsecure      = flag.Bool("tls-insecure", false, "Skip TLS certificate verification")
 
-		// cluster
-		clusterAddrsStr = flag.String("cluster-addrs", "", "Cluster startup nodes, comma-separated host:port list")
+
 
 		// sentinel
 		sentinelAddrsStr = flag.String("sentinel-addrs", "", "Sentinel nodes, comma-separated host:port list")
@@ -117,10 +116,7 @@ func main() {
 		finalAddr = fmt.Sprintf("%s:%d", *host, *port)
 	}
 
-	var clusterAddrs []string
-	if strings.TrimSpace(*clusterAddrsStr) != "" {
-		clusterAddrs = splitAndTrim(*clusterAddrsStr)
-	}
+
 
 	var sentinelAddrs []string
 	if strings.TrimSpace(*sentinelAddrsStr) != "" {
@@ -159,7 +155,7 @@ func main() {
 		TLSKeyFile:     *tlsKeyFile,
 		TLSCAFile:      *tlsCAFile,
 		TLSInsecure:    *tlsInsecure,
-		ClusterAddrs:   clusterAddrs,
+
 		SentinelAddrs:  sentinelAddrs,
 		SentinelMaster: *sentinelMaster,
 		Requests:       *numRequests,

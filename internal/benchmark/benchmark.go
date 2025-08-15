@@ -687,22 +687,32 @@ func (r *Runner) execOne(ctx context.Context, client redis.UniversalClient, test
 		return client.Ping(ctx).Err()
 	case test == "GET":
 		_ = client.Get(ctx, r.pickKeyS()).Val(); return nil
+	case test == "HSET":
+		key := r.pickKeyH(); field := r.pickHashField(); _, _ = client.HSet(ctx, key, field, payload).Result(); return nil
 	case test == "HGET":
 		key := r.pickKeyH(); field := r.pickHashField(); _ = client.HGet(ctx, key, field).Val(); return nil
 	case test == "HGETALL":
 		key := r.pickKeyH(); _ = client.HGetAll(ctx, key).Val(); return nil
+	case test == "LPUSH":
+		key := r.pickKeyL(); _, _ = client.LPush(ctx, key, payload).Result(); return nil
+	case test == "RPUSH":
+		key := r.pickKeyL(); _, _ = client.RPush(ctx, key, payload).Result(); return nil
 	case test == "LINDEX":
 		key := r.pickKeyL(); idx := r.pickIndex(r.opts.ListLen); _ = client.LIndex(ctx, key, int64(idx)).Val(); return nil
 	case strings.HasPrefix(test, "LRANGE_"):
 		key := r.pickKeyL(); n := r.opts.RangeCount; _ = client.LRange(ctx, key, 0, int64(n-1)).Val(); return nil
 	case test == "LLEN":
 		key := r.pickKeyL(); _ = client.LLen(ctx, key).Val(); return nil
+	case test == "SADD":
+		key := r.pickKeySet(); _, _ = client.SAdd(ctx, key, payload).Result(); return nil
 	case test == "SISMEMBER":
 		key := r.pickKeySet(); mem := r.pickSetMember(); _, _ = client.SIsMember(ctx, key, mem).Result(); return nil
 	case test == "SMEMBERS":
 		key := r.pickKeySet(); _ = client.SMembers(ctx, key).Val(); return nil
 	case test == "SCARD":
 		key := r.pickKeySet(); _ = client.SCard(ctx, key).Val(); return nil
+	case test == "ZADD":
+		key := r.pickKeyZ(); _, _ = client.ZAdd(ctx, key, redis.Z{Score: float64(time.Now().UnixNano()), Member: payload}).Result(); return nil
 	case test == "ZSCORE":
 		key := r.pickKeyZ(); mem := r.pickZMember(); _, _ = client.ZScore(ctx, key, mem).Result(); return nil
 	case strings.HasPrefix(test, "ZRANGE_"):
@@ -711,16 +721,24 @@ func (r *Runner) execOne(ctx context.Context, client redis.UniversalClient, test
 		key := r.pickKeyZ(); mem := r.pickZMember(); _, _ = client.ZRank(ctx, key, mem).Result(); return nil
 	case test == "ZCARD":
 		key := r.pickKeyZ(); _ = client.ZCard(ctx, key).Val(); return nil
+	case test == "SETBIT":
+		key := r.pickKeyB(); bit := r.pickIndex(r.opts.BitmapSizeBits); _, _ = client.SetBit(ctx, key, int64(bit), 1).Result(); return nil
 	case test == "GETBIT":
 		key := r.pickKeyB(); bit := r.pickIndex(r.opts.BitmapSizeBits); _, _ = client.GetBit(ctx, key, int64(bit)).Result(); return nil
 	case test == "BITCOUNT":
 		key := r.pickKeyB(); _, _ = client.BitCount(ctx, key, &redis.BitCount{}).Result(); return nil
+	case test == "PFADD":
+		key := r.pickKeyPF(); _, _ = client.PFAdd(ctx, key, payload).Result(); return nil
 	case test == "PFCOUNT":
 		key := r.pickKeyPF(); _, _ = client.PFCount(ctx, key).Result(); return nil
+	case test == "GEOADD":
+		key := r.pickKeyG(); mem := r.pickGeoMember(); lon := -180.0 + float64((time.Now().UnixNano()%360)); lat := -85.0 + float64((time.Now().UnixNano()%170)); _, _ = client.GeoAdd(ctx, key, &redis.GeoLocation{Name: mem, Longitude: lon, Latitude: lat}).Result(); return nil
 	case test == "GEOPOS":
 		key := r.pickKeyG(); mem := r.pickGeoMember(); _, _ = client.GeoPos(ctx, key, mem).Result(); return nil
 	case test == "GEODIST":
 		key := r.pickKeyG(); m1, m2 := r.pickGeoMember(), r.pickGeoMember(); _, _ = client.GeoDist(ctx, key, m1, m2, "km").Result(); return nil
+	case test == "XADD":
+		key := r.pickKeyX(); _, _ = client.XAdd(ctx, &redis.XAddArgs{Stream: key, Values: map[string]any{"field": payload}}).Result(); return nil
 	case strings.HasPrefix(test, "XRANGE_"):
 		key := r.pickKeyX(); n := r.opts.RangeCount; _ = client.XRangeN(ctx, key, "-", "+", int64(n)).Val(); return nil
 	default:
@@ -735,6 +753,10 @@ func (r *Runner) execOne(ctx context.Context, client redis.UniversalClient, test
 			}
 			// Then set TTL using EXPIRE command
 			return client.Expire(ctx, key, r.opts.TTL).Err()
+		case "MSET":
+			// MSET multiple key-value pairs
+			key1 := r.pickKeyS(); key2 := r.pickKeyS()
+			_, _ = client.MSet(ctx, key1, payload, key2, payload).Result(); return nil
 		case "GETSET":
 			_, _ = client.GetSet(ctx, r.pickKeyS(), payload).Result(); return nil
 		}
@@ -749,22 +771,32 @@ func (r *Runner) execPipeline(ctx context.Context, client redis.UniversalClient,
 		for i := 0; i < n; i++ { pipe.Ping(ctx) }
 	case test == "GET":
 		for i := 0; i < n; i++ { pipe.Get(ctx, r.pickKeyS()) }
+	case test == "HSET":
+		for i := 0; i < n; i++ { pipe.HSet(ctx, r.pickKeyH(), r.pickHashField(), payload) }
 	case test == "HGET":
 		for i := 0; i < n; i++ { pipe.HGet(ctx, r.pickKeyH(), r.pickHashField()) }
 	case test == "HGETALL":
 		for i := 0; i < n; i++ { pipe.HGetAll(ctx, r.pickKeyH()) }
+	case test == "LPUSH":
+		for i := 0; i < n; i++ { pipe.LPush(ctx, r.pickKeyL(), payload) }
+	case test == "RPUSH":
+		for i := 0; i < n; i++ { pipe.RPush(ctx, r.pickKeyL(), payload) }
 	case test == "LINDEX":
 		for i := 0; i < n; i++ { pipe.LIndex(ctx, r.pickKeyL(), int64(r.pickIndex(r.opts.ListLen))) }
 	case strings.HasPrefix(test, "LRANGE_"):
 		for i := 0; i < n; i++ { pipe.LRange(ctx, r.pickKeyL(), 0, int64(r.opts.RangeCount-1)) }
 	case test == "LLEN":
 		for i := 0; i < n; i++ { pipe.LLen(ctx, r.pickKeyL()) }
+	case test == "SADD":
+		for i := 0; i < n; i++ { pipe.SAdd(ctx, r.pickKeySet(), payload) }
 	case test == "SISMEMBER":
 		for i := 0; i < n; i++ { pipe.SIsMember(ctx, r.pickKeySet(), r.pickSetMember()) }
 	case test == "SMEMBERS":
 		for i := 0; i < n; i++ { pipe.SMembers(ctx, r.pickKeySet()) }
 	case test == "SCARD":
 		for i := 0; i < n; i++ { pipe.SCard(ctx, r.pickKeySet()) }
+	case test == "ZADD":
+		for i := 0; i < n; i++ { pipe.ZAdd(ctx, r.pickKeyZ(), redis.Z{Score: float64(time.Now().UnixNano()), Member: payload}) }
 	case test == "ZSCORE":
 		for i := 0; i < n; i++ { pipe.ZScore(ctx, r.pickKeyZ(), r.pickZMember()) }
 	case strings.HasPrefix(test, "ZRANGE_"):
@@ -773,16 +805,29 @@ func (r *Runner) execPipeline(ctx context.Context, client redis.UniversalClient,
 		for i := 0; i < n; i++ { pipe.ZRank(ctx, r.pickKeyZ(), r.pickZMember()) }
 	case test == "ZCARD":
 		for i := 0; i < n; i++ { pipe.ZCard(ctx, r.pickKeyZ()) }
+	case test == "SETBIT":
+		for i := 0; i < n; i++ { pipe.SetBit(ctx, r.pickKeyB(), int64(r.pickIndex(r.opts.BitmapSizeBits)), 1) }
 	case test == "GETBIT":
 		for i := 0; i < n; i++ { pipe.GetBit(ctx, r.pickKeyB(), int64(r.pickIndex(r.opts.BitmapSizeBits))) }
 	case test == "BITCOUNT":
 		for i := 0; i < n; i++ { pipe.BitCount(ctx, r.pickKeyB(), &redis.BitCount{}) }
+	case test == "PFADD":
+		for i := 0; i < n; i++ { pipe.PFAdd(ctx, r.pickKeyPF(), payload) }
 	case test == "PFCOUNT":
 		for i := 0; i < n; i++ { pipe.PFCount(ctx, r.pickKeyPF()) }
+	case test == "GEOADD":
+		for i := 0; i < n; i++ { 
+			mem := r.pickGeoMember()
+			lon := -180.0 + float64((time.Now().UnixNano()%360))
+			lat := -85.0 + float64((time.Now().UnixNano()%170))
+			pipe.GeoAdd(ctx, r.pickKeyG(), &redis.GeoLocation{Name: mem, Longitude: lon, Latitude: lat})
+		}
 	case test == "GEOPOS":
 		for i := 0; i < n; i++ { pipe.GeoPos(ctx, r.pickKeyG(), r.pickGeoMember()) }
 	case test == "GEODIST":
 		for i := 0; i < n; i++ { pipe.GeoDist(ctx, r.pickKeyG(), r.pickGeoMember(), r.pickGeoMember(), "km") }
+	case test == "XADD":
+		for i := 0; i < n; i++ { pipe.XAdd(ctx, &redis.XAddArgs{Stream: r.pickKeyX(), Values: map[string]any{"field": payload}}) }
 	case strings.HasPrefix(test, "XRANGE_"):
 		for i := 0; i < n; i++ { pipe.XRangeN(ctx, r.pickKeyX(), "-", "+", int64(r.opts.RangeCount)) }
 	default:
@@ -807,6 +852,12 @@ func (r *Runner) execPipeline(ctx context.Context, client redis.UniversalClient,
 				}
 			}
 			return nil // Return early since we're not using pipeline for this test
+		case "MSET":
+			// MSET multiple key-value pairs in pipeline
+			for i := 0; i < n; i++ { 
+				key1 := r.pickKeyS(); key2 := r.pickKeyS()
+				pipe.MSet(ctx, key1, payload, key2, payload)
+			}
 		case "GETSET":
 			for i := 0; i < n; i++ { pipe.GetSet(ctx, r.pickKeyS(), payload) }
 		default:

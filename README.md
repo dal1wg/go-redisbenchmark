@@ -13,39 +13,20 @@
 - 🏗️ **自定义淘汰时间**: 支持自定义所有类型压测数据TTL
 - 🐳 **Docker支持**: 提供完整的容器化部署方案
 
-## Redis 6.0+ 新特性支持
-
-### ACL (Access Control List)
-- 支持用户名/密码认证
-- 与传统的密码认证兼容
-- 命令行参数: `--user <username> --pass <password>`
-- **Redis URI支持**: `--uri "redis://username:password@host:port/db"`
-
-### TLS (Transport Layer Security)
-- 支持加密连接
-- 客户端证书认证
-- CA证书验证
-- 命令行参数: `--tls --tls-cert --tls-key --tls-ca`
-- **Redis URI支持**: `--uri "rediss://host:port/db"` 或 `--uri "redis://host:port/db?tls=true"`
-
-### Redis URI 格式
-支持标准的Redis URI格式，简化配置：
-```bash
-# 基本ACL认证
-redis://username:password@host:port/db
-
-# TLS连接
-rediss://host:port/db
-
-# 完整配置
-redis://username:password@host:port/db?tls=true&tls-cert=client.crt&tls-key=client.key&tls-ca=ca.crt
-```
-
-详细使用说明请参考 [Redis 6.0+ 特性文档](docs/redis6-features.md) 和 [Redis URI 示例](examples/redis-uri-examples.md)
 
 ## 快速开始
 
-支持 Centos/Ubuntu/Debain/Windows/Macos
+支持以下操作系统
+- Kylin Linux Advanced Server V10
+- UOS Server v20 (a / e)
+- openEuler 20.03 / 22.03 / 24.03
+- RedHat Enterprise Linux 5.x / 6.x / 7.x / 8.x / 9.x / 10.x
+- CentOS 5 / 6 / 7 / 8 / 8-Stream / 9-Stream / 10-Stream
+- Ubuntu 20.04 / 22.04 / 24.04
+- Debian 10 / 11 / 12 / 13
+- SUSE Linux Enterprise Server 11 / 12 / 15
+- openSUSE 11.x / 12.x / 13.x / 42.x / 15.x / tumbleweed
+- Alpine 3.x / edge
 
 ### 构建
 

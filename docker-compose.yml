@@ -1,0 +1,61 @@
+# go-redisbenchmark - A high performance Redis benchmark tool written in Go.
+# Supports Redis 6.0+ features including ACL and TLS.
+#
+# Copyright (c) 2025, dal1wg <15072697283@139.com>
+# All rights reserved.
+#
+# This source code is licensed under the BSD 3-Clause License.
+#
+version: '3.8'
+
+services:
+  redis6-tls-acl:
+    image: redis:6.2-alpine
+    container_name: redis6-tls-acl
+    ports:
+      - "6379:6379"  # 非TLS端口
+      - "6380:6380"  # TLS端口
+    volumes:
+      - ./examples/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./examples/user.acl:/usr/local/etc/redis/users.acl
+      - ./certs:/usr/local/etc/redis/certs
+      - redis-data:/data
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    networks:
+      - redis-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--tls", "--cert", "/usr/local/etc/redis/certs/redis.crt", "--key", "/usr/local/etc/redis/certs/redis.key", "--cacert", "/usr/local/etc/redis/certs/ca.crt", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis6-cluster-tls:
+    image: redis:6.2-alpine
+    container_name: redis6-cluster-tls
+    ports:
+      - "7000:7000"
+      - "7001:7001"
+      - "7002:7002"
+      - "7003:7003"
+      - "7004:7004"
+      - "7005:7005"
+    volumes:
+      - ./examples/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./examples/user.acl:/usr/local/etc/redis/users.acl
+      - ./certs:/usr/local/etc/redis/certs
+      - redis-cluster-data:/data
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    networks:
+      - redis-network
+
+volumes:
+  redis-data:
+  redis-cluster-data:
+
+networks:
+  redis-network:
+    driver: bridge 
